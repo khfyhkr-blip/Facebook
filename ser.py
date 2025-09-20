@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-search_any_txt.py
-نسخة آمنة للبحث: تقرأ جميع ملفات txt في المجلد وتعرض أول سطر مطابق فقط.
-تحويل الحقل timestamp من epoch (ms أو s) إلى تاريخ منسق في المنطقة الزمنية Africa/Cairo.
+ser_any_txt.py
+يقرأ جميع ملفات .txt في المجلد الحالي، يعرض أول سطر مطابق فقط.
+يحاول تحويل timestamp من epoch (ثواني أو ميليثانية) إلى تاريخ منسق في توقيت Africa/Cairo.
 """
 
 import os
 import sys
 from datetime import datetime, timezone
 
-# حاول استيراد zoneinfo (موجود في Python 3.9+). إذا لم يتوفر، سنطبع التوقيت UTC كاحتياط.
+# محاولة استيراد zoneinfo لـ Python 3.9+
 try:
     from zoneinfo import ZoneInfo
     CAIRO_TZ = ZoneInfo("Africa/Cairo")
-except Exception:
+except ImportError:
     CAIRO_TZ = None
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 def parse_line_to_fields(line):
     parts = [p.strip() for p in line.rstrip("\n").split("|")]
+    # تأكد إن القائمة على الأقل بطول 7 عشان ما يصير IndexError
     while len(parts) < 7:
         parts.append("")
     return {
@@ -37,10 +38,12 @@ def format_timestamp(ts_str):
     ts_raw = (ts_str or "").strip()
     if not ts_raw:
         return ""
+    # لو فيه أحرف غير رقمية، ما نحاولش نحول
     if not ts_raw.isdigit():
         return ts_raw
     try:
         ts_int = int(ts_raw)
+        # إذا الرقم كبير جدًا، نفترض إنه ميليثانية
         if ts_int >= 10**12:
             ts_sec = ts_int / 1000.0
         else:
@@ -58,8 +61,12 @@ def format_timestamp(ts_str):
 
 def search_and_stop(query):
     q = query.strip().lower()
-    
-    files = [os.path.join(BASE_FOLDER, f) for f in os.listdir(BASE_FOLDER) if f.endswith(".txt")]
+
+    # نختار جميع الملفات التي تنتهي بـ .txt في المجلد الحالي
+    files = [os.path.join(BASE_FOLDER, fname) for fname in os.listdir(BASE_FOLDER) 
+             if fname.lower().endswith(".txt")]
+
+    # ترتيب الملفات حسب الاسم حتى يكون البحث منظم
     files.sort()
 
     if not files:
@@ -108,7 +115,7 @@ def print_record_with_date(rec):
 
 def usage_and_exit():
     print("الاستخدام:")
-    print("  python3 search_any_txt.py <query>")
+    print("  python3 ser_any_txt.py <query>")
     sys.exit(1)
 
 if __name__ == "__main__":
